@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width", initial-scale="1"/>
+        <title>Tradutor Simples</title>
+        <!-- link para o CSS externo -->
+         <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <h1>Tradutor Simples</h1>
+                <p class="subtitle">Exemplo didático em HTML, sem APIs externas. Edite o dicionário no código para expandir.</p>
+
+                <div class="row row-2" style="align-items:end;">
+                    <div>
+                        <label for="from">De</label>
+                        <select id="from">
+                            <option value="pt">Português</option>
+                            <option value="en">Inglês</option>
+                            <option value="es">Espanhol</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="swap" id="swap" title="Inverter idiomas"></button>
+                        <div style="flex:1">
+                            <label for="to">Para</label>
+                            <select id="to">
+                                <option value="en">Inglês</option>
+                                <option value="pt">Português</option>
+                                <option value="es">Espanhol</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row row-2" style="margin-top:14px;">
+                    <div>
+                        <label for="inputText">Texto de entrada</label>
+                        <textarea id="inputText" placeholder="Digite aqui... Ex: Olá, bom dia!"></textarea>
+                        <div class="tags">
+                            <span class="pill">Dica: use frases curtas</span>
+                            <span class="pill">Sem internet</span>
+                            <span class="pill">Demo educacional</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="outputText">Tradução</label>
+                    <textarea id="outputText" placeholder="Tradução aparecerá aqui..." readonly></textarea>
+                    <div class="btns">
+                        <button class="primary" id="translateBtn">Traduzir</button>
+                        <button class="secondary" id="clearBtn">Limpar</button>
+                        <button  class="danger" id="copyBtn">Copiar</button>
+                    </div>
+                    <p class="muted" id="status" aria-live="polite"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">Feito para estudo - edite o dicionário abaixo no código para mais palavras.</div>
+
+        <script>
+            // Dicionário básico trilíngue
+            const entries = [
+                {pt:"olá", en:"hello", es:"hola"},
+                {pt:"bom dia", en:"good morning", es:"buenos días"},
+                {pt:"boa tarde", en:"good afternoon", es:"buenas tardes"},
+                {pt:"boa noite", en:"good night", es:"buenas noches"},
+                {pt:"obrigado", en:"thank you", es:"gracias"},
+                {pt:"por favor", en:"please", es:"por favor"},
+                {pt:"desculpa", en:"sorry", es:"perdón"},
+                {pt:"como vai?", en:"how are you?", es:"¿cómo estás?"},
+                {pt:"tudo bem", en:"all good", es:"todo bien"},
+                {pt:"até logo", en:"see you", es:"hasta luego"},
+                {pt:"eu te amo", en:"i love you", es:"te amo"},
+                {pt:"onde fica o banheiro?", en:"where is the bathroom?", es:"¿dónde está el baño?"},
+                {pt:"quanto custa?", en:"how much is it?", es:"¿cuánto cuesta?"},
+                {pt:"água", en:"water", es:"agua"},
+                {pt:"comida", en:"food", es:"comida"},
+            ];
+
+            const indexByLang = {pt: new Map(), en: new Map(), es: new Map() };
+            for (const e of entries) {
+                indexByLang.pt.set(e.pt.toLowerCase(), e);
+                indexByLang.en.set(e.en.toLowerCase(), e);
+                indexByLang.es.set(e.es.toLowerCase(), e);
+            }
+
+            const norm = (s) => s.normalize("NFC").trim().toLowerCase();
+
+            function translateText(text, from, to){
+                if (from === to) return text;
+                const src = norm(text);
+                const exact = indexByLang[from].get(src);
+                if (exact) return exact [to];
+
+                const words = src.split(/\s+/);
+                const translated = words.map(w => {
+                    const hit = indexByLang[from].get(w);
+                    return hit ? hit[to] : w;
+                });
+                return translated.join(" ");
+            }
+
+            const fromSel = document.getElementById('from');
+            const toSel = document.getElementById('to');
+            const inputText = document.getElementById('inputText');
+            const outputText = document.getElementById('outputText');
+            const translateBtn = document.getElementById('translateBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const status = document.getElementById('status');
+            const swapBtn = document.getElementById('swap');
+
+            translateBtn.addEventListener('click',() => {
+                const from = fromSel.value;
+                const to = toSel.value;
+                const text = inputText.value;
+                if (!text.trim()) {
+                    setStatus("Digite algum texto para traduzir.");
+                    return;
+                }
+                const out = translateText(text, from, to);
+                outputText.value = out;
+                setStatus(`Traduzido de ${labelOf(from)} para ${labelOf(to)}.`);
+            });
+
+            clearBtn.addEventListener('click', async () => {
+                inputText.value = "";
+                outputText.value = "";
+                setStatus("Campos limpos.");
+                inputText.focus();
+            });
+
+            copyBtn.addEventListener('click', async () => {
+                if (!outputText.value) {
+                    setStatus("Nada para copiar ainda.");
+                    return;
+                }
+                try {
+                    await navigator.clipboard.writeText(outputText.value);
+                    setStatus("Tradução copiada para a área de transferência.");
+                } catch {
+                    setStatus("Não foi possível copiar automaticamente.");
+                }
+            });
+
+            swapBtn.addEventListener('click', () => {
+                const a = fromSel.value;
+                const b = toSel.value;
+                fromSel.value = b;
+                toSel.value = a;
+                setStatus("Idiomas invertidos.");
+            });
+
+            function labelOf(code) {
+                return {pt:"Português", en:"Inglês", es:"Espanhol" }[code]|| code;
+            }
+
+            function setStatus(msg) {
+                status.textContent = msg;
+            }
+        </script>
+    </body>
+</html>
